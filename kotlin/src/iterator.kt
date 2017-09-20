@@ -1,19 +1,10 @@
-import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
-
-fun main(args: Array<String>) {
-    val me = MyTeacher()
-    me.createStudentList()
-    me.callStudent()
-}
-
 enum class Sex {
     Man, Woman
 }
 
-class Student(val name: String, val sex: Sex) {
-}
+data class Student(val name: String, val sex: Sex)
 
-open class StudentList(private var studentCount: Int) {
+open class StudentList {
     private var students: MutableList<Student> = mutableListOf()
     var last = 0
 
@@ -27,17 +18,48 @@ open class StudentList(private var studentCount: Int) {
     }
 }
 
+class MyStudentList: StudentList(), Aggregate {
+    override fun iterator(): Iterator {
+        return MyStudentIterator(this)
+    }
+}
+
+class MyStudentIterator(
+        private val myStudentList: MyStudentList,
+        private var index: Int = 0
+): Iterator {
+    override val hasNext: Boolean
+        get() = myStudentList.last > index
+
+    override val next: Student
+        get() {
+            val student = myStudentList.getStudentAt(index)
+            index += 1
+            return student
+        }
+
+}
+
+interface Aggregate {
+    fun iterator(): Iterator
+}
+
+interface Iterator {
+    val hasNext: Boolean
+    val next: Any
+}
+
 abstract class Teacher {
-    abstract var studentList: StudentList
+    abstract var studentList: MyStudentList
     abstract fun createStudentList()
     abstract fun callStudent()
 }
 
 class MyTeacher : Teacher() {
-    override var studentList: StudentList = StudentList(0)
+    override var studentList = MyStudentList()
 
     override fun createStudentList() {
-        studentList = StudentList(5)
+        studentList = MyStudentList()
         studentList.add(Student("赤井亮太", Sex.Man))
         studentList.add(Student("赤羽里美", Sex.Woman))
         studentList.add(Student("岡田美央", Sex.Woman))
@@ -46,24 +68,15 @@ class MyTeacher : Teacher() {
     }
 
     override fun callStudent() {
-        (0 until studentList.last)
-                .map { studentList.getStudentAt(it) }
-                .forEach { println("${it.name} ${it.sex}") }
+        val iterator = studentList.iterator()
+        while (iterator.hasNext) {
+            println((iterator.next as Student).name)
+        }
     }
 }
 
-//class MyStudentList(var studentCount: Int): StudentList(studentCount), Aggregate {
-//    override fun iterator(): Iterator {
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-//    }
-//
-//}
-//
-//interface Aggregate {
-//    fun iterator(): Iterator
-//}
-//
-//interface Iterator {
-//    val hasNext: Boolean
-//    fun next(): JvmType.Object
-//}
+fun main(args: Array<String>) {
+    val me = MyTeacher()
+    me.createStudentList()
+    me.callStudent()
+}
